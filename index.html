@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI Video Gen | Neon Flux</title>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --glass: rgba(255, 255, 255, 0.08);
+            --glass-border: rgba(255, 255, 255, 0.12);
+            --accent: #00f5ff;
+            --accent-glow: rgba(0, 245, 255, 0.4);
+            --secondary: #7c3aed;
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --error: #ff4b2b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: radial-gradient(circle at top right, #1e1b4b, #0f172a);
+            background-attachment: fixed;
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            padding-bottom: 40px;
+        }
+
+        h1, h2, h3, .brand {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        /* --- UI Components --- */
+        .glass-card {
+            background: var(--glass);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 20px;
+            margin: 15px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(10px);
+        }
+
+        .brand {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(to right, var(--accent), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .btn-icon {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            color: white;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .btn-icon:active {
+            transform: scale(0.9);
+            border-color: var(--accent);
+        }
+
+        /* --- Form Elements --- */
+        .prompt-container textarea {
+            width: 100%;
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--glass-border);
+            border-radius: 15px;
+            padding: 15px;
+            color: white;
+            font-family: inherit;
+            resize: none;
+            font-size: 1rem;
+            margin-bottom: 15px;
+            transition: 0.3s;
+        }
+
+        .prompt-container textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .select-group label {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            margin-bottom: 5px;
+            margin-left: 5px;
+            text-transform: uppercase;
+        }
+
+        select {
+            width: 100%;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            color: white;
+            padding: 10px;
+            border-radius: 12px;
+            appearance: none;
+        }
+
+        .btn-generate {
+            width: 100%;
+            background: transparent;
+            border: 2px solid var(--accent);
+            color: var(--accent);
+            padding: 16px;
+            border-radius: 16px;
+            font-weight: 700;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-generate:active {
+            background: var(--accent);
+            color: var(--bg-color);
+            box-shadow: 0 0 30px var(--accent-glow);
+        }
+
+        /* --- Video Player --- */
+        #video-output {
+            display: none;
+            margin-top: 10px;
+        }
+
+        video {
+            width: 100%;
+            border-radius: 15px;
+            background: #000;
+            border: 1px solid var(--accent);
+        }
+
+        .action-bar {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .btn-action {
+            flex: 1;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid var(--glass-border);
+            background: var(--glass);
+            color: white;
+            text-align: center;
+            text-decoration: none;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        /* --- Loader --- */
+        #loader {
+            display: none;
+            text-align: center;
+            padding: 40px 0;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid var(--glass);
+            border-top: 4px solid var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .loading-text {
+            color: var(--accent);
+            font-weight: 600;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+        /* --- History --- */
+        .history-section h3 {
+            margin: 15px;
+            font-size: 1.1rem;
+        }
+
+        .history-scroll {
+            display: flex;
+            overflow-x: auto;
+            gap: 15px;
+            padding: 5px 15px 15px;
+            scrollbar-width: none;
+        }
+
+        .history-card {
+            min-width: 200px;
+            background: var(--glass);
+            border-radius: 15px;
+            padding: 10px;
+            border: 1px solid var(--glass-border);
+        }
+
+        .history-card video {
+            height: 120px;
+            object-fit: cover;
+        }
+
+        .history-card p {
+            font-size: 0.75rem;
+            margin-top: 8px;
+            color: var(--text-dim);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* --- Modal Settings --- */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.95);
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            padding: 25px;
+            border-radius: 24px;
+            margin-top: 50px;
+        }
+
+        .modal input {
+            width: 100%;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--glass-border);
+            padding: 12px;
+            border-radius: 10px;
+            color: white;
+            margin: 15px 0;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--secondary);
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            display: none;
+            z-index: 2000;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="brand">NEON FLUX AI</div>
+        <button class="btn-icon" onclick="toggleModal('settings-modal')">
+            <i class="fas fa-cog"></i>
+        </button>
+    </header>
+
+    <div class="container">
+        <!-- Main Input Panel -->
+        <div class="glass-card prompt-container">
+            <textarea id="prompt-input" rows="3" placeholder="A dragon flying over a cyberpunk city at sunset..."></textarea>
+            
+            <div class="options-grid">
+                <div class="select-group">
+                    <label>Style</label>
+                    <select id="style-select">
+                        <option value="cinematic">Cinematic</option>
+                        <option value="anime style, vibrant">Anime</option>
+                        <option value="photorealistic, 8k">Realistic</option>
+                        <option value="cartoon style, 3d render">Cartoon</option>
+                        <option value="cyberpunk, sci-fi neon">Sci-Fi</option>
+                    </select>
+                </div>
+                <div class="select-group">
+                    <label>Resolution</label>
+                    <select id="res-select">
+                        <option value="576">576p (Standard)</option>
+                        <option value="360">360p (Fast)</option>
+                        <option value="720">720p (Slow)</option>
+                    </select>
+                </div>
+            </div>
+
+            <button class="btn-generate" id="generate-btn" onclick="generateVideo()">
+                <i class="fas fa-wand-magic-sparkles"></i> Generate Video
+            </button>
+        </div>
+
+        <!-- Loader -->
+        <div id="loader">
+            <div class="spinner"></div>
+            <p class="loading-text">Dreaming in Pixels...</p>
+            <p style="font-size: 0.7rem; color: var(--text-dim); margin-top: 10px;">
+                (First run can take up to 2 mins while model wakes up)
+            </p>
+        </div>
+
+        <!-- Result Section -->
+        <div id="video-output" class="glass-card">
+            <video id="player" controls></video>
+            <div class="action-bar">
+                <a id="download-btn" class="btn-action" download="ai-video.mp4">
+                    <i class="fas fa-download"></i> Save
+                </a>
+                <button class="btn-action" onclick="shareVideo()">
+                    <i class="fas fa-share-alt"></i> Share
+                </button>
+            </div>
+        </div>
+
+        <!-- History -->
+        <div class="history-section">
+            <h3>Recent Creations</h3>
+            <div class="history-scroll" id="history-list">
+                <!-- History cards injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <h2 style="margin-bottom: 15px;">Settings</h2>
+            <p style="font-size: 0.85rem; color: var(--text-dim);">Paste your Hugging Face API Key (Inference API):</p>
+            <input type="password" id="api-key-input" placeholder="hf_xxxxxxxxxxxxxx">
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-action" onclick="saveSettings()" style="background: var(--accent); color: var(--bg-color); font-weight: 700; border: none;">Save Key</button>
+                <button class="btn-action" onclick="toggleModal('settings-modal')">Close</button>
+            </div>
+            <p style="margin-top: 20px; font-size: 0.7rem; color: var(--text-dim);">
+                Keys are stored locally in your browser.
+            </p>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        // --- State & Config ---
+        const API_URL = "https://api-inference.huggingface.co/models/cerspense/zeroscope_v2_576w";
+        let history = JSON.parse(localStorage.getItem('vf_history') || '[]');
+
+        // --- Init ---
+        window.onload = () => {
+            const savedKey = localStorage.getItem('hf_api_key');
+            if (savedKey) document.getElementById('api-key-input').value = savedKey;
+            renderHistory();
+        };
+
+        // --- UI Logic ---
+        function toggleModal(id) {
+            const m = document.getElementById(id);
+            m.style.display = m.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.style.display = 'block';
+            setTimeout(() => t.style.display = 'none', 3000);
+        }
+
+        function saveSettings() {
+            const key = document.getElementById('api-key-input').value.trim();
+            if (key) {
+                localStorage.setItem('hf_api_key', key);
+                showToast("Settings Saved!");
+                toggleModal('settings-modal');
+            }
+        }
+
+        // --- Core API Logic ---
+        async function generateVideo() {
+            const prompt = document.getElementById('prompt-input').value.trim();
+            const apiKey = localStorage.getItem('hf_api_key');
+            const style = document.getElementById('style-select').value;
+
+            if (!apiKey) {
+                showToast("Please enter API Key in Settings");
+                return toggleModal('settings-modal');
+            }
+            if (!prompt) return showToast("Enter a prompt first!");
+
+            // Prompt Enhancement
+            const enhancedPrompt = `${style}, cinematic high quality video of ${prompt}, highly detailed, smooth motion, professional lighting`;
+
+            // UI State
+            document.getElementById('loader').style.display = 'block';
+            document.getElementById('video-output').style.display = 'none';
+            document.getElementById('generate-btn').disabled = true;
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${apiKey}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ inputs: enhancedPrompt })
+                });
+
+                if (response.status === 503) {
+                    showToast("Model is loading... retrying in 10s");
+                    setTimeout(generateVideo, 10000);
+                    return;
+                }
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.error || "Generation failed");
+                }
+
+                const blob = await response.blob();
+                const videoUrl = URL.createObjectURL(blob);
+                
+                displayResult(videoUrl, prompt);
+                addToHistory(videoUrl, prompt);
+
+            } catch (error) {
+                showToast("Error: " + error.message);
+                console.error(error);
+            } finally {
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('generate-btn').disabled = false;
+            }
+        }
+
+        function displayResult(url, prompt) {
+            const videoDiv = document.getElementById('video-output');
+            const player = document.getElementById('player');
+            const downloadBtn = document.getElementById('download-btn');
+
+            videoDiv.style.display = 'block';
+            player.src = url;
+            downloadBtn.href = url;
+            player.play();
+            
+            videoDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // --- History & Social ---
+        function addToHistory(url, prompt) {
+            // Convert blob to base64 or storage is tricky for large files, 
+            // for this demo we store the prompt and a placeholder 
+            // In a real app, you'd upload the blob to a bucket.
+            const item = {
+                id: Date.now(),
+                prompt: prompt,
+                date: new Date().toLocaleDateString(),
+                url: url
+            };
+            history.unshift(item);
+            if (history.length > 10) history.pop();
+            localStorage.setItem('vf_history', JSON.stringify(history));
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const list = document.getElementById('history-list');
+            list.innerHTML = history.map(item => `
+                <div class="history-card">
+                    <video src="${item.url}" muted onmouseover="this.play()" onmouseout="this.pause()"></video>
+                    <p>${item.prompt}</p>
+                </div>
+            `).join('');
+        }
+
+        async function shareVideo() {
+            const shareData = {
+                title: 'Check out my AI Video!',
+                text: document.getElementById('prompt-input').value,
+                url: window.location.href
+            };
+
+            try {
+                if (navigator.share) {
+                    await navigator.share(shareData);
+                } else {
+                    navigator.clipboard.writeText(`Check out my AI video generated with Neon Flux: ${shareData.text}`);
+                    showToast("Prompt copied to clipboard!");
+                }
+            } catch (err) {
+                console.log(err);
+            }
+        }
+    </script>
+</body>
+</html>
